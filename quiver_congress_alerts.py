@@ -5,6 +5,7 @@ import re
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 
 URL = "https://www.quiverquant.com/congresstrading/"
 
@@ -61,33 +62,60 @@ def fetch_trades():
     r = requests.get(URL, headers={"User-Agent": "Mozilla/5.0"}, timeout=20)
     r.raise_for_status()
 
-    # Extract the embedded JSON from the page
-    match = re.search(r"window\.__NUXT__\s*=\s*(\{.*?\});", r.text, re.S)
-    if not match:
-        raise RuntimeError("Could not find embedded data on QuiverQuant congress trading page")
+    soup = BeautifulSoup(r.text, "html.parser")
 
-    data = json.loads(match.group(1))
+    # Nuxt 3 embeds state in JSON script tags
+    scripts = soup.find_all("script", type="application/json")
 
-    # Find the "trades" section in the Nuxt state tree
+    data = None
+    for s in scripts:
+        try:
+            candidate = json.loads(s.string)
+            if isinstance(candidate, dict) and "congressTrades" in json.dumps(candidate):
+                data = candidate
+                break
+        except Exception:
+            continue
+
+    if data is None:
+        raise RuntimeError("Could not locate congress trade data")
+
+    # Walk JSON to find trades
     raw_trades = None
-    for v in data["state"].values():
-        if isinstance(v, dict) and "trades" in v:
-            raw_trades = v["trades"]
-            break
+
+    def find_trades(obj):
+        nonlocal raw_trades
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k == "trades" and isinstance(v, list):
+                    raw_trades = v
+                    return
+                find_trades(v)
+        elif isinstance(obj, list):
+            for i in obj:
+                find_trades(i)
+
+    find_trades(data)
 
     if raw_trades is None:
-        raise RuntimeError("Trade data not found in embedded JSON")
+        raise RuntimeError("Trade list not found in page data")
 
     trades = []
     for t in raw_trades:
-        # Check for amount format like "$50,001 - $100,000"
-        amt_str = t.get("amount", "")
-        if not amt_str:
+        if "buy" not in t.get("transaction", "").lower():
             continue
 
-        # Parse the low end of the range
+        amt = t.get("amount", "")
+        if not amt:
+            continue
+
         try:
-            low = int(amt_str.replace("$", "").replace(",", "").split("-")[0].strip())
+            low = int(
+                amt.replace("$", "")
+                .replace(",", "")
+                .split("-")[0]
+                .strip()
+            )
         except Exception:
             continue
 
@@ -95,6 +123,7 @@ def fetch_trades():
             continue
 
         trade_id = f"{t['name']}|{t['ticker']}|{t['filed']}|{t['transaction']}"
+
         trades.append({
             "id": trade_id,
             "name": t.get("name", ""),
@@ -102,13 +131,12 @@ def fetch_trades():
             "state": t.get("state", ""),
             "ticker": t.get("ticker", ""),
             "transaction": t.get("transaction", ""),
-            "amount": amt_str,
+            "amount": amt,
             "filed": t.get("filed", ""),
         })
 
     return trades
-
-
+    
 def main():
     seen = load_seen()
     all_trades = fetch_trades()
