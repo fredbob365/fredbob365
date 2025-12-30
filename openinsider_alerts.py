@@ -64,6 +64,10 @@ def fetch_trades():
     trades = []
     for row in rows:
         cols = [c.text.strip() for c in row.find_all("td")]
+        trade_type = cols[6]  # Transaction type column
+        if trade_type.lower() != "purchase":
+            continue  # skip anything that isn’t a buy
+            
         trade_id = "|".join(cols[:6])
 
         trades.append({
