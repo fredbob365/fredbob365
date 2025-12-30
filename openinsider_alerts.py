@@ -33,7 +33,7 @@ def save_seen(seen):
 
 def send_email(trades):
     msg = EmailMessage()
-    msg["Subject"] = f"New $10M+ Insider Purchase ({len(trades)})"
+    msg["Subject"] = f"Insider Purchases Filed in Last 7 Days ({len(trades)})"
     msg["From"] = EMAIL_FROM
     msg["To"] = EMAIL_TO
 
@@ -64,19 +64,20 @@ def fetch_trades():
     trades = []
     for row in rows:
         cols = [c.text.strip() for c in row.find_all("td")]
-        trade_type = cols[6]  # Transaction type column
+
+        trade_type = cols[6]  # Purchase / Sale
         if trade_type.lower() != "purchase":
-            continue  # skip anything that isn’t a buy
-            
+            continue
+
         trade_id = "|".join(cols[:6])
 
         trades.append({
             "id": trade_id,
-            "filed": cols[1],  # filed date as string
+            "filed": cols[1],
             "ticker": cols[3],
             "company": cols[4],
             "insider": cols[5],
-            "value": cols[11]
+            "value": cols[11],
         })
 
     return trades
@@ -86,27 +87,34 @@ def main():
     seen = load_seen()
     trades = fetch_trades()
 
-    # Filter trades to the past 7 days
     one_week_ago = datetime.now() - timedelta(days=7)
-    recent_trades = []
+
+    # Trades filed in last 7 days
+    last_week_trades = []
     for t in trades:
         try:
-            trade_date = datetime.strptime(t["filed"], "%m/%d/%Y")
-            if trade_date >= one_week_ago:
-                recent_trades.append(t)
+            filed_date = datetime.strptime(t["filed"], "%m/%d/%Y")
+            if filed_date >= one_week_ago:
+                last_week_trades.append(t)
         except ValueError:
-            # Skip trades with invalid dates
             continue
 
-    # Only include trades not seen before
-    new_trades = [t for t in recent_trades if t["id"] not in seen]
+    # Check if ANY of the last-week trades are new
+    new_trades = [t for t in last_week_trades if t["id"] not in seen]
 
     if new_trades:
-        send_email(new_trades)
+        # Send ALL last-week trades
+        send_email(last_week_trades)
+
+        # Mark only new trades as seen
         for t in new_trades:
             seen.add(t["id"])
         save_seen(seen)
-        print(f"Emailed {len(new_trades)} new trade(s).")
+
+        print(
+            f"New trade detected. Emailed {len(last_week_trades)} trades "
+            f"({len(new_trades)} new)."
+        )
     else:
         print("No new trades.")
 
