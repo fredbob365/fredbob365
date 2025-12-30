@@ -2,7 +2,7 @@ name: OpenInsider Alerts
 
 on:
   schedule:
-    - cron: "*/60 * * * *"
+  - cron: "0 9 * * *"
   workflow_dispatch:
 
 jobs:
