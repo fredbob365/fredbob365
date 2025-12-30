@@ -4,6 +4,7 @@ import json
 import os
 import smtplib
 from email.message import EmailMessage
+from datetime import datetime, timedelta
 
 URL = "http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=365&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago=&xp=1&vl=10000&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page=1"
 
@@ -67,7 +68,7 @@ def fetch_trades():
 
         trades.append({
             "id": trade_id,
-            "filed": cols[1],
+            "filed": cols[1],  # filed date as string
             "ticker": cols[3],
             "company": cols[4],
             "insider": cols[5],
@@ -80,7 +81,21 @@ def fetch_trades():
 def main():
     seen = load_seen()
     trades = fetch_trades()
-    new_trades = [t for t in trades if t["id"] not in seen]
+
+    # Filter trades to the past 7 days
+    one_week_ago = datetime.now() - timedelta(days=7)
+    recent_trades = []
+    for t in trades:
+        try:
+            trade_date = datetime.strptime(t["filed"], "%m/%d/%Y")
+            if trade_date >= one_week_ago:
+                recent_trades.append(t)
+        except ValueError:
+            # Skip trades with invalid dates
+            continue
+
+    # Only include trades not seen before
+    new_trades = [t for t in recent_trades if t["id"] not in seen]
 
     if new_trades:
         send_email(new_trades)
