@@ -17,7 +17,7 @@ SMTP_PORT = 587
 
 def send_email(trades):
     msg = EmailMessage()
-    msg["Subject"] = f"Insider Purchases Filed in Last 7 Days ({len(trades)})"
+    msg["Subject"] = f"Insider Purchases over $1M ({len(trades)})"
     msg["From"] = EMAIL_FROM
     msg["To"] = EMAIL_TO
 
