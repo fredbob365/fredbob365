@@ -39,7 +39,7 @@ def fetch_trades():
 
 def send_email(trades):
     msg = EmailMessage()
-    msg["Subject"] = f"OpenInsider Trades Over $1M ({len(trades)} trades)"
+    msg["Subject"] = f"OpenInsider – Last 7 Days ({len(trades)} trades)"
     msg["From"] = EMAIL_FROM
     msg["To"] = EMAIL_TO
 
@@ -49,4 +49,28 @@ def send_email(trades):
             f"{t['ticker']} | {t['company']}\n"
             f"Insider: {t['insider']}\n"
             f"Type: {t['trade_type']}\n"
-            f"
+            f"Value: {t['value']}\n"
+            f"Filed: {t['filed']}\n"
+            f"{'-'*40}\n"
+        )
+
+    msg.set_content(body)
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(EMAIL_FROM, EMAIL_PASSWORD)
+        server.send_message(msg)
+
+
+def main():
+    trades = fetch_trades()
+
+    if trades:
+        send_email(trades)
+        print(f"Emailed {len(trades)} trades.")
+    else:
+        print("No trades found.")
+
+
+if __name__ == "__main__":
+    main()
