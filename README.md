@@ -1,6 +1,6 @@
 ## Hi there 👋
 
-This code runs once a day at 9am UTC to extract any trades made by company insiders on openinsiders.com over $10M to investigate for investment opportunities.
+This code runs once a day at 9am UTC to extract any trades made by company insiders on openinsiders.com over $1M to investigate for investment opportunities.
 
 This avoids having to manually check the website for any new opportunities.
 
