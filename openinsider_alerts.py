@@ -1,14 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
-import json
 import os
 import smtplib
 from email.message import EmailMessage
 from datetime import datetime, timedelta
 
-URL = "http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=365&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago=&xp=1&vl=1000&vh=&ocl=&och=&sic1=-1&sicl=100&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page=1"
-
-SEEN_FILE = "seen_trades.json"
+URL = "http://openinsider.com/screener?s=&o=&pl=&ph=&ll=&lh=&fd=365&fdr=&td=0&tdr=&fdlyl=&fdlyh=&daysago=&xp=1&vl=1000&vh=&ocl=&och=&sic1=-1&sicl=1000&sich=9999&grp=0&nfl=&nfh=&nil=&nih=&nol=&noh=&v2l=&v2h=&oc2l=&oc2h=&sortcol=0&cnt=1000&page=1"
 
 EMAIL_FROM = os.environ["EMAIL_FROM"]
 EMAIL_TO = os.environ["EMAIL_TO"]
@@ -16,19 +13,6 @@ EMAIL_PASSWORD = os.environ["EMAIL_PASSWORD"]
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-
-
-def load_seen():
-    try:
-        with open(SEEN_FILE, "r") as f:
-            return set(json.load(f))
-    except FileNotFoundError:
-        return set()
-
-
-def save_seen(seen):
-    with open(SEEN_FILE, "w") as f:
-        json.dump(list(seen), f)
 
 
 def send_email(trades):
@@ -65,14 +49,10 @@ def fetch_trades():
     for row in rows:
         cols = [c.text.strip() for c in row.find_all("td")]
 
-        trade_type = cols[6]  # Purchase / Sale
-        if trade_type.lower() != "purchase":
+        if cols[6].lower() != "purchase":
             continue
 
-        trade_id = "|".join(cols[:6])
-
         trades.append({
-            "id": trade_id,
             "filed": cols[1],
             "ticker": cols[3],
             "company": cols[4],
@@ -84,12 +64,9 @@ def fetch_trades():
 
 
 def main():
-    seen = load_seen()
     trades = fetch_trades()
-
     one_week_ago = datetime.now() - timedelta(days=7)
 
-    # Trades filed in last 7 days
     last_week_trades = []
     for t in trades:
         try:
@@ -99,24 +76,11 @@ def main():
         except ValueError:
             continue
 
-    # Check if ANY of the last-week trades are new
-    new_trades = [t for t in last_week_trades if t["id"] not in seen]
-
-    if new_trades:
-        # Send ALL last-week trades
+    if last_week_trades:
         send_email(last_week_trades)
-
-        # Mark only new trades as seen
-        for t in new_trades:
-            seen.add(t["id"])
-        save_seen(seen)
-
-        print(
-            f"New trade detected. Emailed {len(last_week_trades)} trades "
-            f"({len(new_trades)} new)."
-        )
+        print(f"Emailed {len(last_week_trades)} trades.")
     else:
-        print("No new trades.")
+        print("No trades filed in the last 7 days.")
 
 
 if __name__ == "__main__":
