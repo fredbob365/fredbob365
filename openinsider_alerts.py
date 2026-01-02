@@ -33,7 +33,7 @@ def fetch_trades():
             "trade_type": cols[6],
             "price": cols[8],
             "quantity": cols[9],
-            "value": cols[11],
+            "value": cols[12],
         })
 
     return trades
