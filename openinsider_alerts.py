@@ -51,6 +51,8 @@ def send_email(trades):
             f"{t['ticker']} | {t['company']}\n"
             f"Insider: {t['insider']}\n"
             f"Type: {t['trade_type']}\n"
+            f"Price: {t['price']}\n"
+            f"Quantity: {t['quantity']}\n"
             f"Value: {t['value']}\n"
             f"Filed: {t['filed']}\n"
             f"{'-'*40}\n"
