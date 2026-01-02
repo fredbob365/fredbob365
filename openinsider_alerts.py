@@ -31,6 +31,8 @@ def fetch_trades():
             "company": cols[4],
             "insider": cols[5],
             "trade_type": cols[6],
+            "price": cols[8],
+            "quantity": cols[9],
             "value": cols[11],
         })
 
