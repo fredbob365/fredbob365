@@ -27,6 +27,7 @@ def fetch_trades():
 
         trades.append({
             "filed": cols[1],
+            "trade_date": cols[2],
             "ticker": cols[3],
             "company": cols[4],
             "insider": cols[5],
@@ -55,6 +56,7 @@ def send_email(trades):
             f"Quantity: {t['quantity']}\n"
             f"Value: {t['value']}\n"
             f"Filed: {t['filed']}\n"
+            f"Traded: {t['trade_date']}\n"
             f"{'-'*40}\n"
         )
 
